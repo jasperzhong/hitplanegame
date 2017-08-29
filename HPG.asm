@@ -31,6 +31,7 @@ N3       EQU  ($-ENEMYMAP)/2
 TIMER    DW  0
 MAX     DW 30
 SCORE   DW 0
+HIGHEST DW 0
 
 MAINMENU DB  '-------------Welcome-------------',0Dh,0Ah
 		 DB  'How to play',0Dh,0Ah
@@ -48,11 +49,11 @@ CHOOSEMENU	DB  '         1.Easy',0Dh,0Ah
 		 DB  '         please choose:',0Dh,0Ah,'$'
 		 
 		 
-GAMEOVER DB  '--------------------------------------',0Dh,0Ah
-		 DB  '--------------------------------------',0Dh,0Ah
+GAMEOVER DB  'Your highest score:',0Dh,0Ah
+		 DB  0Dh,0Ah
 		 DB  '--------------GAME OVER---------------',0Dh,0Ah
-		 DB  '--------------------------------------',0Dh,0Ah
-		 DB  '--------------------------------------',0Dh,0Ah,'$'
+		 DB  0Dh,0Ah
+		 DB  '$'
 _DATA ENDS
 
 
@@ -107,7 +108,9 @@ Shoot:
 	   ADD SP, 4
 	   JMP Again
 Process:
+	   PUSH SCORE
 	   CALL showScoreByDemical
+	   ADD SP, 2
 	   CALL checkCollision
 	   INC TIMER
 	   MOV DX, DIFFICULTY
@@ -679,11 +682,8 @@ checkCollisionLoc2:
 		  JA checkCollisionLoop2
 		  
 		  ;game over
-		  PUTS GAMEOVER
-		  CALL delay
-		  MOV AX, 4C00h
-		  INT 21h  
-		   
+		  
+		  JMP GAMEEND
 	checkCollisionLoop2:	  
 		  CMP Word Ptr [DI], '$$'
 		  JZ  checkCollisionIf3
@@ -737,8 +737,22 @@ deleteEnemy:
 		  MOV Word Ptr [SI+2], '$$'
 		  DEC ENEMYNUM
 		  ADD SCORE, 2
-	
+		  MOV DX, SCORE
+		  CMP DX, HIGHEST
+		  JL checkCollisionIf3
+		  MOV HIGHEST, DX
 		  JMP checkCollisionIf3
+
+GAMEEND:
+		  MOV AX, 0003h
+		  INT 10h
+		  CALL delay
+		  PUTS GAMEOVER
+		  PUSH HIGHEST
+		  CALL showScoreByDemical
+		  ADD SP, 2
+		  MOV AX, 4C00h
+		  INT 21h  
 		  
 checkCollisionEnd:
 		    
@@ -755,7 +769,7 @@ checkCollision ENDP
 
 Comment/***********
 	  function:   show player's score
-	  parameters: void
+	  parameters: score
 	  return:     void
 **********/
 showScoreByDemical PROC NEAR
@@ -768,7 +782,7 @@ showScoreByDemical PROC NEAR
 		  PUSH DX
 		  
 		  MOV Byte Ptr [BP-2],5
-		  MOV AX, SCORE
+		  MOV AX, [BP+4]
 		  MOV CX, 0
 		  MOV BX, 10
 		  OR AX, AX
